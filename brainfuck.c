@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <signal.h>
 #include <stdbool.h>
 #include "stack.h"
 
@@ -14,12 +15,16 @@
 	#define dshow_stack(...) show_stack(__VA_ARGS__)
 #endif
 
+void *mem_strt;
+FILE *program_file;
+STACK while_stack;
 const char* HELP_MSG = "brainfuck [FILE]\n"\
 					"brainfuck [FILE] -l [TAPE LENGTH]";
 
 void parse_brainfuck(FILE *file, void* mem_tape, int tape_length);
+void cleanup();
+void handle_signal(int sig);
 
-// TODO: Handle SIG
 int main(int argc, char const *argv[])
 {
 	if (argc < 2 || argc > 4){
@@ -38,12 +43,12 @@ int main(int argc, char const *argv[])
 				mem_length = (int) strtol(length_str, &end, 10);
 
 				if (*end != '\0' || mem_length <= 0) {
-				    dprintf("[WARNING]: -l tag provided but TAPE LENGTH=\"%s\" was invalid specified. Defaulting to TAPE LENGTH=%d.\n", length_str, TAPE_LENGTH);
+				    printf("[WARNING]: -l tag provided but TAPE LENGTH=\"%s\" was invalid specified. Defaulting to TAPE LENGTH=%d.\n", length_str, TAPE_LENGTH);
 				    mem_length = TAPE_LENGTH;
 				}
 			} else {
 				mem_length = TAPE_LENGTH;
-				dprintf("[WARNING]: -l tag provided but TAPE LENGTH not specified. Defaulting to TAPE LENGTH=%d.\n", TAPE_LENGTH);
+				printf("[WARNING]: -l tag provided but TAPE LENGTH not specified. Defaulting to TAPE LENGTH=%d.\n", TAPE_LENGTH);
 			}
 
 			if (file_name != NULL){ //already found file name
@@ -53,7 +58,7 @@ int main(int argc, char const *argv[])
 			}
 		} else { //defining file name
 			if (file_name != NULL){
-				dprintf("[WARNING]: More than one program file specified. Forgetting last file name \"%s\" and choosing \"%s\".\n", file_name, argv[i]);
+				printf("[WARNING]: More than one program file specified. Forgetting last file name \"%s\" and choosing \"%s\".\n", file_name, argv[i]);
 			}
 			file_name = argv[i];
 		}
@@ -68,28 +73,49 @@ int main(int argc, char const *argv[])
 
 	dprintf("[DEBUG]: File Name = \"%s\" Memory Length = %d\n",file_name, mem_length);
 	
-	FILE *file = fopen(file_name, "r");
-	if (file == NULL){
+	signal(SIGINT, handle_signal);
+    signal(SIGTERM, handle_signal);
+
+	program_file = fopen(file_name, "r");
+	if (program_file == NULL){
 		printf("[FAULT]: Error opening file \"%s\".\n", file_name);
 		exit(1);
 	}
 
-	void* mem_strt = calloc(mem_length, sizeof(char));
+	mem_strt = calloc(mem_length, sizeof(char));
 	if (mem_strt == NULL){
 		printf("[FAULT]: Could not allocate memory tape of size %d\n", mem_length);
-		fclose(file);
+		fclose(program_file);
 		exit(1);
 	}
 
-	parse_brainfuck(file, mem_strt, mem_length);
+	parse_brainfuck(program_file, mem_strt, mem_length);
 
-	fclose(file);
+	fclose(program_file);
 	free(mem_strt);
 	return 0;
 }
 
+void cleanup(){
+	if (program_file != NULL){
+		fclose(program_file);
+	}
+	if (mem_strt != NULL){
+		free(mem_strt);
+	}
+	if (while_stack != NULL){
+		cleanup_stack(while_stack);
+	}
+}
+
+void handle_signal(int sig){
+	printf("[FAULT]: Caught signal %d, cleaning up...\n", sig);
+    cleanup();
+    exit(1);
+}
+
 void parse_brainfuck(FILE *file, void *mem_strt, int tape_length){
-	STACK while_stack = create_stack();
+	while_stack = create_stack();
 	
 	char *mem_tape = (char *)mem_strt;
 	int ptr = 0;
@@ -185,4 +211,3 @@ void parse_brainfuck(FILE *file, void *mem_strt, int tape_length){
 
 	cleanup_stack(while_stack);
 }
-
