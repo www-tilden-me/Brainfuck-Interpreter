@@ -1,14 +1,17 @@
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+#include "stack.h"
 
 #define TAPE_LENGTH 30000 
 #ifdef DEBUG
     #define dprintf(...) printf(__VA_ARGS__)
+	#define dshow_stack(...) show_stack(__VA_ARGS__)
 #else
     #define dprintf(...) ((void)0)
+	#define dshow_stack(...) show_stack(__VA_ARGS__)
 #endif
 
 const char* HELP_MSG = "brainfuck [FILE]\n"\
@@ -86,20 +89,23 @@ int main(int argc, char const *argv[])
 }
 
 void parse_brainfuck(FILE *file, void *mem_strt, int tape_length){
+	STACK while_stack = create_stack();
+	
 	char *mem_tape = (char *)mem_strt;
 	int ptr = 0;
 	size_t cmd_line = 1;
 	size_t cmd_pos = 1;
 	size_t cmd_pos_save;
 
-	size_t while_start;
-
 	char cmd;
 	while ((cmd = fgetc(file)) != EOF){
+		dprintf("[DEBUG]: Executing '%c' at [%u,%u].\n", cmd, cmd_line, cmd_pos);
 		switch(cmd){
 		case '>':
 			if (ptr + 1 >= tape_length){
 				printf("[FAULT]: Memory out of bounds move at [%u,%u].\n", cmd_line, cmd_pos);
+
+				cleanup_stack(while_stack);
 				return;
 			}
 			ptr++;
@@ -107,13 +113,15 @@ void parse_brainfuck(FILE *file, void *mem_strt, int tape_length){
 		case '<':
 			if (ptr - 1 < 0){
 				printf("[FAULT]: Memory out of bounds move at [%u,%u].\n", cmd_line, cmd_pos);
+
+				cleanup_stack(while_stack);
 				return;
 			}
 			ptr--;
 			break;
 		case '+':
 			if ((unsigned char)mem_tape[ptr] == 255){
-				dprintf("[WARNING]: Memory overflow at [%u,%u]\n", cmd_line, cmd_pos);
+				dprintf("[WARNING]: Memory overflow at [%u,%u].\n", cmd_line, cmd_pos);
 				mem_tape[ptr] = 0;
 			} else {
 				mem_tape[ptr]++;
@@ -121,7 +129,7 @@ void parse_brainfuck(FILE *file, void *mem_strt, int tape_length){
 			break;
 		case '-':
 			if ((unsigned char)mem_tape[ptr] == 0){
-				dprintf("[WARNING]: Memory overflow at [%u,%u]\n", cmd_line, cmd_pos);
+				dprintf("[WARNING]: Memory overflow at [%u,%u].\n", cmd_line, cmd_pos);
 				mem_tape[ptr] = 255;
 			} else {
 				mem_tape[ptr]--;
@@ -134,12 +142,27 @@ void parse_brainfuck(FILE *file, void *mem_strt, int tape_length){
 			putchar(mem_tape[ptr]);
 			break;
 		case '[':
-			while_start = ftell(file); //TODO: Stack for multiple whiles chained
+			stack_push(while_stack, ftell(file));
 			cmd_pos_save = cmd_pos;
 			break;
 		case ']':
+			if (is_stack_empty(while_stack)){
+				printf("[FAULT]: Illegal stack return at [%u,%u].\n", cmd_line, cmd_pos);
+
+				cleanup_stack(while_stack);
+				return;
+			}
+
+			size_t seek_loc;
+			if (!stack_pop(while_stack, &seek_loc)){
+				printf("[FAULT]: Error while finding While start at [%u,%u].\n", cmd_line, cmd_pos);
+
+				cleanup_stack(while_stack);
+				return;
+			}
+
 			if ((unsigned char)mem_tape[ptr] != 0){
-				fseek(file, while_start, SEEK_SET);
+				fseek(file, seek_loc-1, SEEK_SET);
 				cmd_pos = cmd_pos_save;
 			}
 			break;
@@ -152,10 +175,14 @@ void parse_brainfuck(FILE *file, void *mem_strt, int tape_length){
 		case '\t':
 			break;
 		default:
-			printf("[FAULT]: Illegal command \"%c\" at [%u,%u]\n",cmd, cmd_line, cmd_pos);
+			printf("[FAULT]: Illegal command \"%c\" at [%u,%u].\n", cmd, cmd_line, cmd_pos);
+
+			cleanup_stack(while_stack);
 			return;
 		}
 		cmd_pos++;
 	}
+
+	cleanup_stack(while_stack);
 }
 
