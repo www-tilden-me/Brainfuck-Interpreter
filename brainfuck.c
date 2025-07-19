@@ -2,11 +2,15 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-//The brainfuck memory tape is supposed to be 30,000 bytes?
+#include <stdbool.h>
+
 #define TAPE_LENGTH 30000 
 #define DEBUG true
+
 const char* HELP_MSG = "brainfuck [FILE]\n"\
 					"brainfuck [FILE] -l [TAPE LENGTH]";
+
+void parse_brainfuck(FILE *file, void* mem_tape, int tape_length);
 
 int main(int argc, char const *argv[])
 {
@@ -53,10 +57,31 @@ int main(int argc, char const *argv[])
 		mem_length = TAPE_LENGTH;
 	}
 
-	printf("FileName = %s\nMemLength = %d\n",file_name, mem_length);
+	if (DEBUG){
+		printf("[DEBUG]: File Name = \"%s\" MemLength = %d\n",file_name, mem_length);
+	}
 	
-	exit(0);
+	FILE *file = fopen(file_name, "r");
+	if (file == NULL){
+		printf("[FAULT]: Error opening file \"%s\".\n", file_name);
+		exit(1);
+	}
+
+	void* mem_strt = calloc(mem_length, sizeof(char));
+	if (mem_strt == NULL){
+		printf("[FAULT]: Could not allocate memory tape of size %d\n", mem_length);
+		fclose(file);
+		exit(1);
+	}
+
+	parse_brainfuck(file, mem_strt, mem_length);
+
+	fclose(file);
+	free(mem_strt);
 	return 0;
 }
 
+void parse_brainfuck(FILE *file, void *mem_tape, int tape_length){
+	printf("IN HERE!\n");
+}
 
