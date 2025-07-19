@@ -5,13 +5,18 @@
 #include <stdbool.h>
 
 #define TAPE_LENGTH 30000 
-#define DEBUG true
+#ifdef DEBUG
+    #define dprintf(...) printf(__VA_ARGS__)
+#else
+    #define dprintf(...) ((void)0)
+#endif
 
 const char* HELP_MSG = "brainfuck [FILE]\n"\
 					"brainfuck [FILE] -l [TAPE LENGTH]";
 
 void parse_brainfuck(FILE *file, void* mem_tape, int tape_length);
 
+// TODO: Handle SIG
 int main(int argc, char const *argv[])
 {
 	if (argc < 2 || argc > 4){
@@ -30,12 +35,12 @@ int main(int argc, char const *argv[])
 				mem_length = (int) strtol(length_str, &end, 10);
 
 				if (*end != '\0' || mem_length <= 0) {
-				    printf("[WARNING]: -l tag provided but TAPE LENGTH=\"%s\" was invalid specified. Defaulting to TAPE LENGTH=%d.\n", length_str, TAPE_LENGTH);
+				    dprintf("[WARNING]: -l tag provided but TAPE LENGTH=\"%s\" was invalid specified. Defaulting to TAPE LENGTH=%d.\n", length_str, TAPE_LENGTH);
 				    mem_length = TAPE_LENGTH;
 				}
 			} else {
 				mem_length = TAPE_LENGTH;
-				printf("[WARNING]: -l tag provided but TAPE LENGTH not specified. Defaulting to TAPE LENGTH=%d.\n", TAPE_LENGTH);
+				dprintf("[WARNING]: -l tag provided but TAPE LENGTH not specified. Defaulting to TAPE LENGTH=%d.\n", TAPE_LENGTH);
 			}
 
 			if (file_name != NULL){ //already found file name
@@ -45,7 +50,7 @@ int main(int argc, char const *argv[])
 			}
 		} else { //defining file name
 			if (file_name != NULL){
-				printf("[WARNING]: More than one program file specified. Forgetting last file name \"%s\" and choosing \"%s\".\n", file_name, argv[i]);
+				dprintf("[WARNING]: More than one program file specified. Forgetting last file name \"%s\" and choosing \"%s\".\n", file_name, argv[i]);
 			}
 			file_name = argv[i];
 		}
@@ -57,9 +62,8 @@ int main(int argc, char const *argv[])
 		mem_length = TAPE_LENGTH;
 	}
 
-	if (DEBUG){
-		printf("[DEBUG]: File Name = \"%s\" MemLength = %d\n",file_name, mem_length);
-	}
+
+	dprintf("[DEBUG]: File Name = \"%s\" Memory Length = %d\n",file_name, mem_length);
 	
 	FILE *file = fopen(file_name, "r");
 	if (file == NULL){
@@ -81,7 +85,77 @@ int main(int argc, char const *argv[])
 	return 0;
 }
 
-void parse_brainfuck(FILE *file, void *mem_tape, int tape_length){
-	printf("IN HERE!\n");
+void parse_brainfuck(FILE *file, void *mem_strt, int tape_length){
+	char *mem_tape = (char *)mem_strt;
+	int ptr = 0;
+	size_t cmd_line = 1;
+	size_t cmd_pos = 1;
+	size_t cmd_pos_save;
+
+	size_t while_start;
+
+	char cmd;
+	while ((cmd = fgetc(file)) != EOF){
+		switch(cmd){
+		case '>':
+			if (ptr + 1 >= tape_length){
+				printf("[FAULT]: Memory out of bounds move at [%u,%u].\n", cmd_line, cmd_pos);
+				return;
+			}
+			ptr++;
+			break;
+		case '<':
+			if (ptr - 1 < 0){
+				printf("[FAULT]: Memory out of bounds move at [%u,%u].\n", cmd_line, cmd_pos);
+				return;
+			}
+			ptr--;
+			break;
+		case '+':
+			if ((unsigned char)mem_tape[ptr] == 255){
+				dprintf("[WARNING]: Memory overflow at [%u,%u]\n", cmd_line, cmd_pos);
+				mem_tape[ptr] = 0;
+			} else {
+				mem_tape[ptr]++;
+			}
+			break;
+		case '-':
+			if ((unsigned char)mem_tape[ptr] == 0){
+				dprintf("[WARNING]: Memory overflow at [%u,%u]\n", cmd_line, cmd_pos);
+				mem_tape[ptr] = 255;
+			} else {
+				mem_tape[ptr]--;
+			}
+			break;
+		case ',':
+			mem_tape[ptr] = getchar();
+			break;
+		case '.':
+			putchar(mem_tape[ptr]);
+			break;
+		case '[':
+			while_start = ftell(file); //TODO: Stack for multiple whiles chained
+			cmd_pos_save = cmd_pos;
+			break;
+		case ']':
+			if ((unsigned char)mem_tape[ptr] != 0){
+				fseek(file, while_start, SEEK_SET);
+				cmd_pos = cmd_pos_save;
+			}
+			break;
+
+		case '\n':
+			cmd_line++;
+			cmd_pos = 0;
+			break;
+		case ' ':
+		case '\t':
+			break;
+		default:
+			printf("[FAULT]: Illegal command \"%c\" at [%u,%u]\n",cmd, cmd_line, cmd_pos);
+			return;
+		}
+		cmd_pos++;
+	}
 }
 
