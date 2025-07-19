@@ -14,12 +14,25 @@
     #define dprintf(...) ((void)0)
 	#define dshow_stack(...) show_stack(__VA_ARGS__)
 #endif
+#define wprintf(...); if (!mute_warnings){ printf(__VA_ARGS__); }
 
 void *mem_strt;
 FILE *program_file;
 STACK while_stack;
-const char* HELP_MSG = "brainfuck [FILE]\n"\
-					"brainfuck [FILE] -l [TAPE LENGTH]";
+bool mute_warnings = true;
+const char* HELP_MSG =
+	"Usage: brainfuck [-m] [OPTIONS] <FILE>\n"
+	"\n"
+	"Interpreter for Brainfuck programs.\n"
+	"\n"
+	"Options:\n"
+	"  -m                 Unmute warnings (enable debug output)\n"
+	"  -l <TAPE LENGTH>   Set the size of the memory tape (default: 30000)\n"
+	"\n"
+	"Notes:\n"
+	"  • -m must be provided before other options\n"
+	"  • The order of options does not matter otherwise, but -l must be followed by a valid integer.\n"
+	"  • The FILE argument is required and should point to a valid Brainfuck source file.\n";
 
 void parse_brainfuck(FILE *file, void* mem_tape, int tape_length);
 void cleanup();
@@ -27,7 +40,7 @@ void handle_signal(int sig);
 
 int main(int argc, char const *argv[])
 {
-	if (argc < 2 || argc > 4){
+	if (argc < 2 || argc > 5){
 		puts(HELP_MSG);
 		return 0;
 	}
@@ -35,20 +48,24 @@ int main(int argc, char const *argv[])
 	int i = 1;
 	char* file_name = NULL;
 	int mem_length = -1;
+
 	while (i < argc){
-		if (strcmp(argv[i],"-l") == 0){
+		if (strcmp(argv[i], "-m") == 0){
+			mute_warnings = false;
+		}
+		else if (strcmp(argv[i],"-l") == 0){
 			if (argc > i + 1){
 				char *length_str = argv[i+1];
 				char *end;
 				mem_length = (int) strtol(length_str, &end, 10);
 
 				if (*end != '\0' || mem_length <= 0) {
-				    printf("[WARNING]: -l tag provided but TAPE LENGTH=\"%s\" was invalid specified. Defaulting to TAPE LENGTH=%d.\n", length_str, TAPE_LENGTH);
+				    wprintf("[WARNING]: -l tag provided but TAPE LENGTH=\"%s\" was invalid specified. Defaulting to TAPE LENGTH=%d.\n", length_str, TAPE_LENGTH);
 				    mem_length = TAPE_LENGTH;
 				}
 			} else {
 				mem_length = TAPE_LENGTH;
-				printf("[WARNING]: -l tag provided but TAPE LENGTH not specified. Defaulting to TAPE LENGTH=%d.\n", TAPE_LENGTH);
+				wprintf("[WARNING]: -l tag provided but TAPE LENGTH not specified. Defaulting to TAPE LENGTH=%d.\n", TAPE_LENGTH);
 			}
 
 			if (file_name != NULL){ //already found file name
@@ -58,7 +75,7 @@ int main(int argc, char const *argv[])
 			}
 		} else { //defining file name
 			if (file_name != NULL){
-				printf("[WARNING]: More than one program file specified. Forgetting last file name \"%s\" and choosing \"%s\".\n", file_name, argv[i]);
+				wprintf("[WARNING]: More than one program file specified. Forgetting last file name \"%s\" and choosing \"%s\".\n", file_name, argv[i]);
 			}
 			file_name = argv[i];
 		}
@@ -125,7 +142,9 @@ void parse_brainfuck(FILE *file, void *mem_strt, int tape_length){
 
 	char cmd;
 	while ((cmd = fgetc(file)) != EOF){
+
 		dprintf("[DEBUG]: Executing '%c' at [%u,%u].\n", cmd, cmd_line, cmd_pos);
+
 		switch(cmd){
 		case '>':
 			if (ptr + 1 >= tape_length){
@@ -147,7 +166,7 @@ void parse_brainfuck(FILE *file, void *mem_strt, int tape_length){
 			break;
 		case '+':
 			if ((unsigned char)mem_tape[ptr] == 255){
-				dprintf("[WARNING]: Memory overflow at [%u,%u].\n", cmd_line, cmd_pos);
+				wprintf("[WARNING]: Memory overflow at [%u,%u].\n", cmd_line, cmd_pos);
 				mem_tape[ptr] = 0;
 			} else {
 				mem_tape[ptr]++;
@@ -155,7 +174,7 @@ void parse_brainfuck(FILE *file, void *mem_strt, int tape_length){
 			break;
 		case '-':
 			if ((unsigned char)mem_tape[ptr] == 0){
-				dprintf("[WARNING]: Memory overflow at [%u,%u].\n", cmd_line, cmd_pos);
+				wprintf("[WARNING]: Memory overflow at [%u,%u].\n", cmd_line, cmd_pos);
 				mem_tape[ptr] = 255;
 			} else {
 				mem_tape[ptr]--;
