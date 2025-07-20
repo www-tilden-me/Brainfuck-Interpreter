@@ -218,6 +218,7 @@ void parse_brainfuck(FILE *file, void *mem_strt, int tape_length){
 			break;
 		case ' ':
 		case '\t':
+		case '\r':
 			break;
 		default:
 			printf("[FAULT]: Illegal command \"%c\" at [%u,%u].\n", cmd, cmd_line, cmd_pos);
