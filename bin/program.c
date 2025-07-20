@@ -35,26 +35,26 @@ int parse_brainfuck(FILE *file, int ptr_start, void *mem_strt, int tape_length,
 	char cmd;
 	while ((cmd = fgetc(file)) != EOF){
 
-		dprintf("[DEBUG]: Executing '%c' at [%u,%u].\n", cmd, cmd_line, cmd_pos);
+		dprintf("[DEBUG]: Executing '%c' at [%zu,%zu].\n", cmd, cmd_line, cmd_pos);
 
 		switch(cmd){
 		case '>':
 			if (ptr + 1 >= tape_length){
-				printf("[FAULT]: Memory out of bounds move at [%u,%u].\n", cmd_line, cmd_pos);
+				printf("[FAULT]: Memory out of bounds move at [%zu,%zu].\n", cmd_line, cmd_pos);
 				return FAULT_CODE;
 			}
 			ptr++;
 			break;
 		case '<':
 			if (ptr - 1 < 0){
-				printf("[FAULT]: Memory out of bounds move at [%u,%u].\n", cmd_line, cmd_pos);
+				printf("[FAULT]: Memory out of bounds move at [%zu,%zu].\n", cmd_line, cmd_pos);
 				return FAULT_CODE;
 			}
 			ptr--;
 			break;
 		case '+':
 			if ((unsigned char)mem_tape[ptr] == 255){
-				wprintf("[WARNING]: Memory overflow at [%u,%u].\n", cmd_line, cmd_pos);
+				wprintf("[WARNING]: Memory overflow at [%zu,%zu].\n", cmd_line, cmd_pos);
 				mem_tape[ptr] = 0;
 			} else {
 				mem_tape[ptr]++;
@@ -62,7 +62,7 @@ int parse_brainfuck(FILE *file, int ptr_start, void *mem_strt, int tape_length,
 			break;
 		case '-':
 			if ((unsigned char)mem_tape[ptr] == 0){
-				wprintf("[WARNING]: Memory underflow at [%u,%u].\n", cmd_line, cmd_pos);
+				wprintf("[WARNING]: Memory underflow at [%zu,%zu].\n", cmd_line, cmd_pos);
 				mem_tape[ptr] = 255;
 			} else {
 				mem_tape[ptr]--;
@@ -81,13 +81,13 @@ int parse_brainfuck(FILE *file, int ptr_start, void *mem_strt, int tape_length,
 			break;
 		case ']':
 			if (is_stack_empty(wstack)){
-				printf("[FAULT]: Illegal stack return at [%u,%u].\n", cmd_line, cmd_pos);
+				printf("[FAULT]: Illegal stack return at [%zu,%zu].\n", cmd_line, cmd_pos);
 				return FAULT_CODE;
 			}
 
 			size_t seek_loc;
 			if (!stack_pop(wstack, &seek_loc)){
-				printf("[FAULT]: Error while finding While start at [%u,%u].\n", cmd_line, cmd_pos);
+				printf("[FAULT]: Error while finding While start at [%zu,%zu].\n", cmd_line, cmd_pos);
 				return FAULT_CODE;
 			}
 
@@ -107,7 +107,7 @@ int parse_brainfuck(FILE *file, int ptr_start, void *mem_strt, int tape_length,
 			break;
 
 		default:
-			printf("[FAULT]: Illegal command \"%c\" at [%u,%u].\n", cmd, cmd_line, cmd_pos);
+			printf("[FAULT]: Illegal command \"%c\" at [%zu,%zu].\n", cmd, cmd_line, cmd_pos);
 			return FAULT_CODE;
 		}
 		cmd_pos++;

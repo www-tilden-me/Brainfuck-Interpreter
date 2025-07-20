@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include "stack.h"
+#include "helper.h"
 #include "program.h"
 
 #define TAPE_LENGTH 30000 
@@ -17,6 +18,7 @@
 #endif
 #define wprintf(...); if (!mute_warnings){ printf(__VA_ARGS__); }
 #define FAULT_CODE -1
+#define DEFAULT_CELLS_TO_DISPLAY 4
 
 void *mem_strt;
 FILE *program_file;
@@ -40,8 +42,9 @@ const char* HELP_MSG =
 const char* INTERACTIVE_MODE_MSG = "Brainfuck Interactive Mode\n"
 	"\n"
 	"Special Commands:\n"
-	" - \"q\"\tQuit interactive mode.\n"
-	" - \"c\"\tClear all memory cells in tape and reset pointer to 0.\n";
+	" - \"q\"    \tQuit interactive mode.\n"
+	" - \"c\"    \tClear all memory cells in tape and reset pointer to 0.\n"
+	" - \"s [n]\"\tShows (n or default) memory cells in tape\n";
 
 void cleanup(){
 	if (program_file != NULL) {
@@ -155,6 +158,22 @@ int main(int argc, char const *argv[])
 			    curr_ptr = 0;
 				dprintf("[DEBUG]: Interactive mode cell clear.\n");
 			    continue; // skip parsing
+			} else if (line[0] == 's') {
+			    size_t cells_to_show = DEFAULT_CELLS_TO_DISPLAY;
+			    char *end;
+			    
+			    // Skip leading spaces after 's'
+			    char *arg = line + 1;
+			    while (*arg == ' ' || *arg == '\t') arg++;
+
+			    long value = strtol(arg, &end, 10);
+			    if (end != arg && value >= 0) {
+			        cells_to_show = (size_t)value;
+			    }
+			
+				dprintf("[DEBUG]: Showing %zu cells from %zu.\n", cells_to_show, curr_ptr);
+				display_cells(mem_strt, mem_length, curr_ptr, cells_to_show);
+				continue;
 			}
 
 			// Now parse full line
