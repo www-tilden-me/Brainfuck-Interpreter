@@ -23,38 +23,38 @@ void flush_stdin() {
 
 int parse_brainfuck(FILE *file, int ptr_start, void *mem_strt, int tape_length, 
 						STACK wstack, bool mute_warnings){	
-
+	STACK cmd_pos_stack = create_stack();
+	STACK cmd_line_stack = create_stack();
 	char *mem_tape = (char *)mem_strt;
 	int ptr = ptr_start;
-	size_t cmd_line = 1;
-	size_t cmd_pos = 1;
-	size_t cmd_pos_save;
+	size_t curr_cmd_line = 1;
+	size_t curr_cmd_pos = 1;
 
 	bool wasRead = false;
 
 	char cmd;
 	while ((cmd = fgetc(file)) != EOF){
 
-		dprintf("[DEBUG]: Executing '%c' at [%zu,%zu].\n", cmd, cmd_line, cmd_pos);
+		dprintf("[DEBUG]: Executing '%c' at [%zu,%zu].\n", cmd, curr_cmd_line, curr_cmd_pos);
 
 		switch(cmd){
 		case '>':
 			if (ptr + 1 >= tape_length){
-				printf("[FAULT]: Memory out of bounds move at [%zu,%zu].\n", cmd_line, cmd_pos);
+				printf("[FAULT]: Memory out of bounds move at [%zu,%zu].\n", curr_cmd_line, curr_cmd_pos);
 				return FAULT_CODE;
 			}
 			ptr++;
 			break;
 		case '<':
 			if (ptr - 1 < 0){
-				printf("[FAULT]: Memory out of bounds move at [%zu,%zu].\n", cmd_line, cmd_pos);
+				printf("[FAULT]: Memory out of bounds move at [%zu,%zu].\n", curr_cmd_line, curr_cmd_pos);
 				return FAULT_CODE;
 			}
 			ptr--;
 			break;
 		case '+':
 			if ((unsigned char)mem_tape[ptr] == 255){
-				wprintf("[WARNING]: Memory overflow at [%zu,%zu].\n", cmd_line, cmd_pos);
+				wprintf("[WARNING]: Memory overflow at [%zu,%zu].\n", curr_cmd_line, curr_cmd_pos);
 				mem_tape[ptr] = 0;
 			} else {
 				mem_tape[ptr]++;
@@ -62,7 +62,7 @@ int parse_brainfuck(FILE *file, int ptr_start, void *mem_strt, int tape_length,
 			break;
 		case '-':
 			if ((unsigned char)mem_tape[ptr] == 0){
-				wprintf("[WARNING]: Memory underflow at [%zu,%zu].\n", cmd_line, cmd_pos);
+				wprintf("[WARNING]: Memory underflow at [%zu,%zu].\n", curr_cmd_line, curr_cmd_pos);
 				mem_tape[ptr] = 255;
 			} else {
 				mem_tape[ptr]--;
@@ -78,7 +78,8 @@ int parse_brainfuck(FILE *file, int ptr_start, void *mem_strt, int tape_length,
 		case '[':
 			if (mem_tape[ptr] != 0){
 				stack_push(wstack, ftell(file));
-				cmd_pos_save = cmd_pos;
+				stack_push(cmd_line_stack, curr_cmd_line);
+				stack_push(cmd_pos_stack, curr_cmd_pos);
 			} else {
 				int total = 1;
 				char tmp;
@@ -97,25 +98,27 @@ int parse_brainfuck(FILE *file, int ptr_start, void *mem_strt, int tape_length,
 			break;
 		case ']':
 			if (is_stack_empty(wstack)){
-				printf("[FAULT]: Illegal stack return at [%zu,%zu].\n", cmd_line, cmd_pos);
+				printf("[FAULT]: Illegal stack return at [%zu,%zu].\n", curr_cmd_line, curr_cmd_pos);
 				return FAULT_CODE;
 			}
 
 			size_t seek_loc;
 			if (!stack_pop(wstack, &seek_loc)){
-				printf("[FAULT]: Error while finding While start at [%zu,%zu].\n", cmd_line, cmd_pos);
+				printf("[FAULT]: Error while finding While start at [%zu,%zu].\n", curr_cmd_line, curr_cmd_pos);
 				return FAULT_CODE;
 			}
 
 			if ((unsigned char)mem_tape[ptr] != 0){
 				fseek(file, seek_loc-1, SEEK_SET);
-				cmd_pos = cmd_pos_save;
+				stack_pop(cmd_pos_stack, &curr_cmd_pos);
+				stack_pop(cmd_line_stack, &curr_cmd_line);
+				continue;
 			}
 			break;
 
 		case '\n':
-			cmd_line++;
-			cmd_pos = 0;
+			curr_cmd_line++;
+			curr_cmd_pos = 0;
 			break;
 		case ' ':
 		case '\t':
@@ -123,10 +126,10 @@ int parse_brainfuck(FILE *file, int ptr_start, void *mem_strt, int tape_length,
 			break;
 
 		default:
-			printf("[FAULT]: Illegal command \"%c\" at [%zu,%zu].\n", cmd, cmd_line, cmd_pos);
+			printf("[FAULT]: Illegal command \"%c\" at [%zu,%zu].\n", cmd, curr_cmd_line, curr_cmd_pos);
 			return FAULT_CODE;
 		}
-		cmd_pos++;
+		curr_cmd_pos++;
 	}
 
 	if (wasRead){ //clean extra characters in stdin -- '\n'
