@@ -126,7 +126,7 @@ void cleanup(){
 }
 
 void handle_signal(int sig){
-	printf("[FAULT]: Caught signal %d, cleaning up...\n", sig);
+	printf("[EXIT]: Caught signal %d, cleaning up...\n", sig);
     cleanup();
     exit(1);
 }

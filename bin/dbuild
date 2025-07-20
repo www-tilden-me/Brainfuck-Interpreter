@@ -1,0 +1,3 @@
+#!/bin/bash
+
+gcc -DDEBUG -o dbrainfuck brainfuck.c stack.c
