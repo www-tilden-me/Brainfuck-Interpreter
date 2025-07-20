@@ -1,0 +1,3 @@
+#!/bin/bash
+
+gcc -o brainfuck bin/brainfuck.c bin/stack.c
