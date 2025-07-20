@@ -76,8 +76,24 @@ int parse_brainfuck(FILE *file, int ptr_start, void *mem_strt, int tape_length,
 			putchar(mem_tape[ptr]);
 			break;
 		case '[':
-			stack_push(wstack, ftell(file));
-			cmd_pos_save = cmd_pos;
+			if (mem_tape[ptr] != 0){
+				stack_push(wstack, ftell(file));
+				cmd_pos_save = cmd_pos;
+			} else {
+				int total = 1;
+				char tmp;
+				while ((tmp = fgetc(file)) != EOF){
+					if (tmp == '['){
+						total += 1;
+					} else if (tmp == ']'){
+						total -= 1; 
+						if (total == 0){
+							break;
+						}
+					}
+				}
+			}
+
 			break;
 		case ']':
 			if (is_stack_empty(wstack)){
