@@ -5,10 +5,11 @@ This is a lightweight and configurabe Brainfuck interpreter written in C.
 ## Features
 
 - Fully supports standard Brainfuck
+- Built-in interactive Brainfuck shell
 - Allows for configurable memory tape length (default: 30,000 cells)
 - Allows for nested while loops
 - Optional debug warnings of memory overflows
-- Ignored new lines and spaces
+- Ignores new lines and spaces
 
 ## Build
 
