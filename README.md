@@ -5,6 +5,7 @@ This is a lightweight and configurabe Brainfuck interpreter written in C.
 ## Features
 
 - Fully supports standard [Brainfuck](https://gist.github.com/roachhd/dce54bec8ba55fb17d3a)
+	- Does not support comments (Brainfuck is supposed to be hard to read, hence the name)
 - Built-in interactive Brainfuck shell
 - Allows for configurable memory tape length (default: 30,000 cells)
 - Allows for nested while loops
